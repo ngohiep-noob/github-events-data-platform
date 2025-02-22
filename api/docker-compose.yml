@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+    db:
+        image: postgres:17.4-alpine
+        container_name: postgres
+        environment:
+            POSTGRES_USER: gharchive
+            POSTGRES_PASSWORD: password
+            POSTGRES_DB: gharchive
+        ports:
+            - "5432:5432"
+        volumes:
+            - api_data:/var/lib/postgresql/data
+        restart: always
+
+volumes:
+    api_data:
