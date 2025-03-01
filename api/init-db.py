@@ -8,13 +8,6 @@ from dotenv import load_dotenv
 import os
 import re
 
-root_path = Path(__file__).resolve().parent
-
-data_path = root_path / "data"
-data_path.mkdir(exist_ok=True)
-
-load_dotenv(root_path / ".env")
-
 
 def run_ddl(db_config: dict, ddl_query: str):
     """
@@ -139,6 +132,12 @@ def write_batch(db_config: dict, table_name: str, object_list: list):
 
 
 if __name__ == "__main__":
+    root_path = Path(__file__).resolve().parent
+
+    data_path = root_path / "data"
+    data_path.mkdir(exist_ok=True)
+
+    load_dotenv(root_path / ".env")
     if os.getenv("INIT_DB") != "true":
         print(
             "Set the INIT_DB environment variable to 'true' to run initialization script."
