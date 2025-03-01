@@ -1,0 +1,5 @@
+tqdm
+requests
+psycopg2-binary
+python-dotenv
+fastapi[standard]

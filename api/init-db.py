@@ -1,21 +1,39 @@
-from tqdm import tqdm
 import requests
 import gzip
 from pathlib import Path
 import json
 import psycopg2
 from psycopg2.extras import execute_batch
+from dotenv import load_dotenv
+import os
+import re
 
 root_path = Path(__file__).resolve().parent
 
 data_path = root_path / "data"
 data_path.mkdir(exist_ok=True)
 
-download_info = {
-    "2024-12-01": (7, 17),
-    "2024-12-02": (7, 17),
-    "2024-12-03": (7, 17),
-}
+load_dotenv(root_path / ".env")
+
+
+def run_ddl(db_config: dict, ddl_query: str):
+    """
+    Run a DDL script in a PostgreSQL database.
+
+    Args:
+        db_config (dict): Database connection details with keys: host, dbname, user, password, port.
+        ddl_query (str): DDL script to execute.
+    """
+
+    try:
+        with psycopg2.connect(**db_config) as conn:
+            with conn.cursor() as cur:
+                cur.execute(ddl_query)
+
+                print("DDL script executed successfully.")
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(f"Error: {error}")
+        raise
 
 
 def create_table(db_config: dict, table_name: str):
@@ -26,7 +44,7 @@ def create_table(db_config: dict, table_name: str):
         db_config (dict): Database connection details with keys: host, dbname, user, password, port.
     """
     create_table_query = f"""
-    CREATE TABLE IF NOT EXISTS "{table_name}" (
+    CREATE TABLE "{table_name}" (
         id BIGINT NOT NULL,
         type TEXT NOT NULL,
         actor JSONB NOT NULL,
@@ -38,19 +56,22 @@ def create_table(db_config: dict, table_name: str):
     );
     """
 
-    conn = psycopg2.connect(**db_config)
-    try:
-        cur = conn.cursor()
-        cur.execute(create_table_query)
-        conn.commit()
-        print(f"Table {table_name} created successfully.")
-        cur.close()
-        conn.close()
-    except (Exception, psycopg2.DatabaseError) as error:
-        print(f"Error: {error}")
-        if conn:
-            conn.rollback()
-        raise
+    run_ddl(db_config, create_table_query)
+
+
+def drop_table(db_config: dict, table_name: str):
+    """
+    Drops a table in a PostgreSQL database.
+
+    Args:
+        db_config (dict): Database connection details with keys: host, dbname, user, password, port.
+        table_name (str): Name of the table to drop.
+    """
+    drop_table_query = f"""
+    DROP TABLE IF EXISTS "{table_name}";
+    """
+
+    run_ddl(db_config, drop_table_query)
 
 
 def read_json(file_path: Path) -> list:
@@ -67,7 +88,21 @@ def read_json(file_path: Path) -> list:
     return raw
 
 
-def write_objects_to_postgres(db_config: dict, table_name: str, object_list: list):
+def clean_json_data(data):
+    if isinstance(data, str):
+        # Remove null characters
+        return re.sub(r"\u0000", "", data)
+    elif isinstance(data, dict):
+        # Recursively clean dictionaries
+        return {k: clean_json_data(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        # Recursively clean lists
+        return [clean_json_data(item) for item in data]
+    else:
+        return data
+
+
+def write_batch(db_config: dict, table_name: str, object_list: list):
     # Ensure the list is not empty
     if not object_list:
         raise ValueError("The object list is empty. Nothing to write.")
@@ -79,7 +114,7 @@ def write_objects_to_postgres(db_config: dict, table_name: str, object_list: lis
     for obj in object_list:
         row = []
         for col in columns:
-            value = obj[col]
+            value = clean_json_data(obj[col])
             if isinstance(value, (dict, list)):  # Convert dict or list to JSON string
                 row.append(json.dumps(value))
             else:
@@ -91,35 +126,45 @@ def write_objects_to_postgres(db_config: dict, table_name: str, object_list: lis
     placeholders = ", ".join([f"%s" for _ in columns])
     insert_query = f'INSERT INTO "{table_name}" ({columns_str}) VALUES ({placeholders})'
 
-    conn = psycopg2.connect(**db_config)
     try:
-        cur = conn.cursor()
-        # Use execute_batch for efficient bulk insert
-        execute_batch(cur, insert_query, values, page_size=10000)
-        conn.commit()
+        with psycopg2.connect(**db_config) as conn:
+            with conn.cursor() as cur:
+                # Use execute_batch for efficient bulk insert
+                execute_batch(cur, insert_query, values, page_size=5000)
 
-        cur.close()
-        conn.close()
-        print(f"Successfully inserted objects into {table_name}.")
+                print(f"Successfully inserted objects into {table_name}.")
     except (Exception, psycopg2.DatabaseError) as error:
         print(f"Error: {error}")
-        if conn:
-            conn.rollback()
         raise
 
 
 if __name__ == "__main__":
+    if os.getenv("INIT_DB") != "true":
+        print(
+            "Set the INIT_DB environment variable to 'true' to run initialization script."
+        )
+        exit()
+
     db_config = {
-        "host": "localhost",
-        "dbname": "gharchive",
-        "user": "gharchive",
-        "password": "password",
-        "port": 5432,
+        "host": os.getenv("POSTGRES_HOST"),
+        "dbname": os.getenv("POSTGRES_DB"),
+        "user": os.getenv("POSTGRES_USER"),
+        "password": os.getenv("POSTGRES_PASSWORD"),
+        "port": os.getenv("POSTGRES_PORT"),
     }
+    print(f"Database configuration: {db_config}")
+
+    download_info = {
+        "2024-12-01": (8, 9),
+        "2024-12-02": (8, 9),
+        "2024-12-03": (8, 9),
+    }
+    print(f"Downloading data from GitHub Archive...\n{download_info}")
 
     for date, hour_range in download_info.items():
         hours = [f"{hour}" for hour in range(hour_range[0], hour_range[1] + 1)]
         table_name = date.replace("-", "_")
+        drop_table(db_config, table_name=table_name)
         create_table(db_config, table_name=table_name)
 
         for hour in hours:
@@ -132,10 +177,12 @@ if __name__ == "__main__":
 
             # Save the .gz file
             with open(f"{str(dest_file)}.gz", "wb") as handle:
-                for data in tqdm(response.iter_content(chunk_size=1024), unit="kB"):
+                for data in response.iter_content(chunk_size=1024):
                     handle.write(data)
+            print(f"Downloaded {str(dest_file)}.gz")
 
             # Unzip the file
+            print(f"Unzipping {str(dest_file)}.gz...")
             with gzip.open(f"{str(dest_file)}.gz", "rb") as f:
                 content = f.read()
                 with open(dest_file, "wb") as handle:
@@ -145,12 +192,15 @@ if __name__ == "__main__":
             objects = read_json(dest_file)
 
             # Write the objects to the database
-            write_objects_to_postgres(
-                db_config, table_name=table_name, object_list=objects
+            print(
+                f"Writing {len(objects)} objects to the database table {table_name}..."
             )
+            write_batch(db_config, table_name=table_name, object_list=objects)
 
             # remove the .gz file
             (data_path / f"{time_id}.json.gz").unlink()
 
             # remove the .json file
             (data_path / f"{time_id}.json").unlink()
+
+    print("Initialization script completed.")
