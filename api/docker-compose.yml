@@ -28,5 +28,23 @@ services:
             db:
                 condition: service_healthy
 
+    web-server:
+        build:
+            context: .
+            dockerfile: Dockerfile.web-server
+        container_name: web-server
+        env_file:
+            - .env
+        environment:
+            - POSTGRES_HOST=db
+        ports:
+            - "8000:8000"
+        volumes:
+            - .:/app
+        depends_on:
+            db:
+                condition: service_healthy
+        
+
 volumes:
     api_data:
