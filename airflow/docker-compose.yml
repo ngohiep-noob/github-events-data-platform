@@ -28,6 +28,8 @@ x-airflow-common:
     &airflow-common-depends-on
     postgres:
       condition: service_healthy
+  networks:
+    - gharchive_network
 
 services:
   postgres:
@@ -43,6 +45,8 @@ services:
       interval: 5s
       retries: 5
     restart: always
+    networks:
+      - gharchive_network
 
   airflow-webserver:
     <<: *airflow-common
@@ -140,6 +144,7 @@ services:
     volumes:
       - .:/sources
 
+
   airflow-cli:
     <<: *airflow-common
     profiles:
@@ -155,3 +160,8 @@ services:
 
 volumes:
   gharchive-airflow-pg-volume:
+
+
+networks:
+  gharchive_network:
+    external: true
