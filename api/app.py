@@ -6,6 +6,7 @@ import psycopg2
 from dotenv import load_dotenv
 import os
 import json
+import gzip
 
 app = FastAPI()
 load_dotenv(".env")
@@ -83,7 +84,8 @@ def download(query: Annotated[MicroBatch, Query()]):
         payload.append(dict(zip(table_cols, row)))
 
     json_str = json.dumps(payload, default=str)
-    resp = Response(content=json_str, media_type="application/json")
-    filename = f"{end.strftime('%Y-%m-%dT%H:%M:%S')}-{query.delta_in_minutes}.json"
+    compressed_data = gzip.compress(json_str.encode("utf-8"))
+    resp = Response(content=compressed_data, media_type="application/gzip")
+    filename = f"{end.strftime('%Y-%m-%dT%H:%M:%S')}-{query.delta_in_minutes}.json.gz"
     resp.headers["Content-Disposition"] = f"attachment; filename={filename}"
     return resp
