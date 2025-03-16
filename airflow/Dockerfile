@@ -1,4 +1,4 @@
-ARG AIRFLOW_IMAGE_NAME=apache/airflow:slim-2.10.5
+ARG AIRFLOW_IMAGE_NAME=apache/airflow:2.10.5
 FROM ${AIRFLOW_IMAGE_NAME}
 
 ENV AIRFLOW_HOME=/opt/airflow
