@@ -1,4 +1,4 @@
-ARG AIRFLOW_IMAGE_NAME=apache/airflow:2.10.5
+ARG AIRFLOW_IMAGE_NAME=apache/2.10.5-python3.10
 FROM ${AIRFLOW_IMAGE_NAME}
 
 ENV AIRFLOW_HOME=/opt/airflow
@@ -7,6 +7,15 @@ WORKDIR $AIRFLOW_HOME
 
 USER root
 RUN apt-get update -qq && apt-get install vim -qqq && apt-get install -y python3-pip
+
+# Install system dependencies required for xmlsec
+RUN apt-get update && apt-get install -y \
+    libxml2-dev \
+    libxmlsec1-dev \
+    pkg-config \
+    gcc \
+    python3-dev \
+    && apt-get clean
 
 ENV JAVA_HOME=/home/jdk-11.0.2
 
@@ -25,8 +34,5 @@ COPY requirements.txt .
 
 RUN python3 -m pip install --upgrade pip
 RUN python3 -m pip install --no-cache-dir -r requirements.txt
-
-COPY scripts scripts
-RUN chmod +x scripts
 
 USER $AIRFLOW_UID

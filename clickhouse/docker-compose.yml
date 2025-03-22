@@ -1,0 +1,23 @@
+services:
+    clickhouse:
+        image: clickhouse/clickhouse-server:latest
+        container_name: clickhouse
+        environment:
+            - CLICKHOUSE_DB=gharchive
+            - CLICKHOUSE_USER=default
+            - CLICKHOUSE_PASSWORD=default
+        volumes:
+            - clickhouse_data:/var/lib/clickhouse
+            - ./initdb:/docker-entrypoint-initdb.d
+        restart: always
+        ports:
+            - "8123:8123"
+        networks:
+            - gharchive_network
+
+volumes:
+    clickhouse_data:
+
+networks:
+  gharchive_network:
+    external: true
