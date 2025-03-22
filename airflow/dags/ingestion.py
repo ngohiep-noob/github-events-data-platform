@@ -57,7 +57,7 @@ def source_to_minio(**kwargs):
     s3_hook.load_file(tmpfile.name, s3_key, s3_bucket, replace=True)
     print(f"Uploaded {tmpfile.name} to s3://{s3_bucket}/{s3_key}")
 
-    return f"{s3_bucket}/{s3_key}"  # Pust location of the file in MinIO to XCom
+    return f"{s3_bucket}/{s3_key}"  # Push location of the file in MinIO to XCom
 
 
 with DAG(
@@ -66,7 +66,7 @@ with DAG(
     description="A workflow to ingest data from GitHub Archive API and store to MinIO, then load to ClickHouse",
     schedule_interval="*/5 8-9 * * *",  # Every 5 minutes from 8 to 9 UTC
     start_date=pdl.datetime(2024, 12, 1, tz=TZ),
-    end_date=pdl.datetime(2024, 12, 4, tz=TZ),
+    end_date=pdl.datetime(2024, 12, 3, tz=TZ),
     catchup=True,
     max_active_runs=1,
 ) as dag:

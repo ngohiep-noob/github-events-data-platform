@@ -5,9 +5,7 @@ import re
 import requests
 from io import BytesIO
 import pyarrow as pa
-import pyarrow.compute as pc
 import pendulum as pdl
-import numpy as np
 
 
 def get_nested(obj: Dict, *keys, default: Any = None) -> Any:
