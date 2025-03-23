@@ -11,3 +11,5 @@ docker compose -f ./clickhouse/docker-compose.yml down
 echo "Stopping Airflow"
 docker compose -f ./airflow/docker-compose.yml down
 
+echo "Stopping Metabase"
+docker compose -f ./metabase/docker-compose.yml down
