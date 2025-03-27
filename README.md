@@ -5,6 +5,13 @@ This repository contains a data lakehouse platform designed to process and analy
 
 ![System design diagram](docs/system-design.drawio.png)
 
+## Outcome
+### Airflow ETL pipeline
+![Airflow dag](docs/airflow-dag.png)
+
+### Metabase dashboard with few simple metrics
+![Metabase dashboard](docs/metabase-dashboard.png)
+
 ## Services
 
 ### 1. **API**

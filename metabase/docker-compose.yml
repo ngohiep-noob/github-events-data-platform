@@ -1,11 +1,40 @@
 services:
+  postgres-metabase:
+    image: postgres:latest
+    container_name: postgres-metabase
+    volumes:
+      - postgres-metabase-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: metabase
+      POSTGRES_USER: metabase
+      POSTGRES_PASSWORD: metabase
+      PGPORT: 4444
+    networks:
+      - gharchive_network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+  
   metabase:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: metabase
+    volumes:
+      - ./urandom:/dev/random:ro
     ports:
       - "3000:3000"
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabase
+      MB_DB_PORT: 4444
+      MB_DB_USER: metabase
+      MB_DB_PASS: metabase
+      MB_DB_HOST: postgres-metabase
+    depends_on:
+      - postgres-metabase
     healthcheck:
       test: curl --fail -I http://localhost:3000/api/health || exit 1
       interval: 15s
@@ -13,6 +42,11 @@ services:
       retries: 5
     networks:
       - gharchive_network
+
+    
 networks:
   gharchive_network:
     external: true
+
+volumes:
+  postgres-metabase-data:
