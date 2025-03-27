@@ -1,6 +1,6 @@
 services:
   spark-master:
-    image: bitnami/spark:latest
+    image: bitnami/spark:3.5.5
     command: bin/spark-class org.apache.spark.deploy.master.Master
     ports:
       - "8989:8080"  # Web UI for Spark Master
@@ -12,7 +12,7 @@ services:
       - gharchive_network
 
   spark-worker:
-    image: bitnami/spark:latest
+    image: bitnami/spark:3.5.5
     command: bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
     depends_on:
       - spark-master

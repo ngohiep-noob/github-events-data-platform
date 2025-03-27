@@ -1,7 +1,5 @@
 FROM python:3.10-slim
 
-ENV CLICKHOUSE_JDBC_VER=0.8.2
-
 WORKDIR /app
 
 USER root
@@ -21,16 +19,27 @@ RUN DOWNLOAD_URL="https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_l
     && rm -rf "${TMP_DIR}" \
     && java --version
 
-USER 0
+# Install Scala 2.12
+ENV SCALA_HOME=/home/scala-2.12.15
+ENV PATH="${SCALA_HOME}/bin:${PATH}"
+RUN DOWNLOAD_URL="https://downloads.lightbend.com/scala/2.12.15/scala-2.12.15.tgz" \
+    && TMP_DIR="$(mktemp -d)" \
+    && curl -fL "${DOWNLOAD_URL}" --output "${TMP_DIR}/scala-2.12.15.tgz" \
+    && mkdir -p "${SCALA_HOME}" \
+    && tar xzf "${TMP_DIR}/scala-2.12.15.tgz" -C "${SCALA_HOME}" --strip-components=1 \
+    && rm -rf "${TMP_DIR}"
 
-# Download Clickhouse JDBC driver and save to /app/jars
-RUN mkdir -p /app/jars \
-    && wget -O /app/jars/clickhouse-jdbc-${CLICKHOUSE_JDBC_VER}.jar https://github.com/ClickHouse/clickhouse-java/releases/download/v${CLICKHOUSE_JDBC_VER}/clickhouse-jdbc-${CLICKHOUSE_JDBC_VER}.jar
+USER 0
 
 # Install the required packages & Jupyter 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir jupyter 
+
+# Download Clickhouse JDBC driver and save to /app/jars
+RUN mkdir -p /app/jars \
+    && wget -O /app/jars/clickhouse-jdbc-0.6.3.jar https://github.com/ClickHouse/clickhouse-java/releases/download/v0.6.3/clickhouse-jdbc-0.6.3-all.jar \
+    && wget -O /app/jars/clickhouse-spark-runtime-3.5_2.12-0.8.0.jar https://repo1.maven.org/maven2/com/clickhouse/spark/clickhouse-spark-runtime-3.5_2.12/0.8.0/clickhouse-spark-runtime-3.5_2.12-0.8.0.jar
 
 EXPOSE 8888
 
